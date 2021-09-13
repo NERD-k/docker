@@ -1,0 +1,103 @@
+#
+# ubuntu base development environment
+#
+
+FROM ubuntu:focal
+LABEL maintainer="孔NERD <smallnerd.k@gmail.com>"
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
+
+# Create user with id 1000 (workflow default)
+RUN useradd --shell /bin/bash -u 1000 -c "" -m user \
+	&& usermod -aG sudo user
+
+# Install and Upgrade
+# lsb-core will intall many packages
+RUN apt-get update && apt-get -y --quiet --no-install-recommends upgrade \
+	&& apt-get -y --quiet --no-install-recommends install \
+		sudo \
+		gosu \
+		less \
+		apt-utils \
+	&& apt-get -y autoremove \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+# Setup LC
+RUN apt-get update && apt-get -y --quiet --no-install-recommends upgrade \
+	&& apt-get -y --quiet --no-install-recommends install \
+		locales \
+	&& sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen \
+	&& locale-gen "en_US.UTF-8"\
+	&& update-locale "en_US.UTF-8" \
+	&& apt-get -y autoremove \
+	&& apt-get clean autoclean \
+	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+ENV LANG en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+
+## Setup datezone
+#RUN apt-get update && apt-get -y --quiet --no-install-recommends upgrade \
+#	&& apt-get -y --quiet --no-install-recommends install \
+#		tzdata \
+#	&& dpkg-reconfigure tzdata \
+#	&& apt-get -y autoremove \
+#	&& apt-get clean autoclean \
+#	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+# Install build dependencies, Python3, Python 3 pip
+#RUN apt-get update && apt-get -y --quiet --no-install-recommends upgrade \
+#	&& apt-get -y --quiet --no-install-recommends install \
+#		build-essential \
+#		binutils \
+#		python3 \
+#		python3-pip \
+#	&& apt-get clean autoclean \
+#	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+#
+## Install Python 3 pip build dependencies first.
+#RUN python3 -m pip install --upgrade pip wheel setuptools
+#
+## Python 3 dependencies installed by pip
+##RUN python3 -m pip install argparse
+
+# Custom requestments
+#RUN apt-get update && apt-get -y --quiet --no-install-recommends upgrade \
+#	&& apt-get -y --quiet --no-install-recommends install \
+#		xxx \
+#	&& apt-get clean autoclean \
+#	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+# Setup manual ccache
+#RUN ln -s /usr/bin/ccache /usr/lib/ccache/cc \
+#	&& ln -s /usr/bin/ccache /usr/lib/ccache/c++
+
+# Create user with id 1001 (other workflow default)
+RUN useradd --shell /bin/bash -u 1001 -c "" -m other \
+	&& usermod -aG sudo other
+
+# Setup virtual X server
+RUN mkdir /tmp/.X11-unix && \
+	chmod 1777 /tmp/.X11-unix && \
+	chown -R root:root /tmp/.X11-unix
+ENV DISPLAY :99
+
+#ENV CCACHE_UMASK=000
+ENV FASTRTPSGEN_DIR="/usr/local/bin/"
+#ENV PATH="/usr/lib/ccache:$PATH"
+ENV TERM=xterm
+#ENV TZ=UTC
+ENV TZ=Asia/Shanghai
+
+# Expose TCP/UDP ports
+#EXPOSE 0/tcp
+#EXPOSE 0/udp
+
+# Create and start as LOCAL_USER_ID
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+#CMD ["/bin/bash"]
